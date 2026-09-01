@@ -7,15 +7,19 @@
     <style>
         * { box-sizing: border-box; }
         body { margin: 0; background: #eef2f5; font-family: Arial, sans-serif; color: #1f2937; }
-        .top-bar { background: #0f172a; color: white; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; }
-        .top-bar button { background: #2563eb; color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; }
         .app { max-width: 520px; margin: auto; background: white; min-height: 100vh; position: relative; }
         .top { background: #123b5d; color: white; padding: 22px 18px; }
         .top h1 { margin: 0; font-size: 21px; }
         .top p { margin: 6px 0 0; font-size: 13px; }
         main { padding: 18px; }
-        .sec { margin-bottom: 22px; }
-        .t { font-weight: bold; color: #123b5d; margin-bottom: 10px; }
+        .sec { margin-bottom: 22px; transition: opacity 0.3s ease; }
+        
+        /* ESTILO PARA SEÇÕES BLOQUEADAS */
+        .sec.disabled { opacity: 0.4; pointer-events: none; }
+        
+        .t { font-weight: bold; color: #123b5d; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .tag-req { font-size: 11px; background: #fee2e2; color: #991b1b; padding: 2px 6px; border-radius: 4px; font-weight: normal; }
+        
         label { display: block; font-size: 13px; font-weight: bold; margin: 9px 0 5px; }
         input, select, textarea { width: 100%; padding: 13px; border: 1px solid #d1d5db; border-radius: 9px; font-size: 15px; }
         textarea { min-height: 80px; }
@@ -26,6 +30,7 @@
         .add { background: #e7f0f7; color: #123b5d; }
         .rm { background: #fee2e2; color: #991b1b; margin-top: 8px; }
         .send { background: #123b5d; color: white; font-size: 16px; margin-top: 10px; }
+        .send:disabled { background: #9ca3af; cursor: not-allowed; }
         .hidden { display: none !important; }
         .note { font-size: 12px; color: #6b7280; margin-top: 6px; }
     </style>
@@ -39,36 +44,40 @@
     </header>
 
     <main id="form">
-        <div class="sec">
-            <div class="t">1. Identificação</div>
-            <label>Equipe</label>
-            <select id="selectEquipe" onchange="atualizarMembros()"></select>
+        <!-- SEÇÃO 1: OBRIGATÓRIA -->
+        <div class="sec" id="sec1">
+            <div class="t">1. Identificação <span class="tag-req">Obrigatório</span></div>
+            <label>Equipe *</label>
+            <select id="selectEquipe" onchange="atualizarMembros(); validarFluxo();"></select>
 
-            <label>Responsável</label>
-            <select id="selectResponsavel" disabled>
+            <label>Responsável *</label>
+            <select id="selectResponsavel" disabled onchange="validarFluxo()">
                 <option value="">Selecione primeiro a equipe</option>
             </select>
 
-            <label>Data</label>
-            <input type="date" id="dataAtual">
+            <label>Data *</label>
+            <input type="date" id="dataAtual" oninput="validarFluxo()">
 
-            <label>Local / referência</label>
-            <input id="localRef" placeholder="Bairro, cidade ou referência">
+            <label>Local / referência *</label>
+            <input id="localRef" placeholder="Bairro, cidade ou referência" oninput="validarFluxo()">
         </div>
 
-        <div class="sec">
-            <div class="t">2. Tipo de demanda</div>
-            <select id="selectDemanda"></select>
+        <!-- SEÇÃO 2: OBRIGATÓRIA -->
+        <div class="sec disabled" id="sec2">
+            <div class="t">2. Tipo de demanda <span class="tag-req">Obrigatório</span></div>
+            <select id="selectDemanda" onchange="validarFluxo()"></select>
         </div>
 
-        <div class="sec">
-            <div class="t">3. Serviços realizados</div>
+        <!-- SEÇÃO 3: OBRIGATÓRIA -->
+        <div class="sec disabled" id="sec3">
+            <div class="t">3. Serviços realizados <span class="tag-req">Obrigatório</span></div>
             <div id="services"></div>
             <button class="btn add" type="button" onclick="add()">+ Adicionar serviço</button>
             <div class="note">Adicione somente os serviços executados.</div>
         </div>
 
-        <div class="sec">
+        <!-- SEÇÃO 4: OPCIONAL -->
+        <div class="sec disabled" id="sec4">
             <div class="t">4. Ocorrências / imprevistos</div>
             <label>Houve algum imprevisto?</label>
             <div class="choice"><input type="radio" name="i" value="n" checked onchange="tog('ib','i')"> Não</div>
@@ -80,7 +89,8 @@
             </div>
         </div>
 
-        <div class="sec">
+        <!-- SEÇÃO 5: OPCIONAL -->
+        <div class="sec disabled" id="sec5">
             <div class="t">5. Transporte de materiais</div>
             <label>Houve transporte durante o deslocamento?</label>
             <div class="choice"><input type="radio" name="tr" value="n" checked onchange="tog('tb','tr')"> Não</div>
@@ -98,12 +108,13 @@
             </div>
         </div>
 
-        <div class="sec">
+        <!-- SEÇÃO 6: OPCIONAL -->
+        <div class="sec disabled" id="sec6">
             <div class="t">6. Observações</div>
             <textarea id="obsGerais" placeholder="Informações adicionais, se necessário."></textarea>
         </div>
 
-        <button class="btn send" type="button" onclick="enviar()">Enviar registro</button>
+        <button class="btn send" id="btnEnviar" type="button" onclick="enviar()" disabled>Preencha os campos para enviar</button>
     </main>
 
     <div id="ok" style="display:none;text-align:center;padding:30px">
@@ -117,9 +128,9 @@
     // EDITAR AS EQUIPES E SEUS INTEGRANTES AQUI:
     const APP_DATA = {
         equipes: {
-            "Equipe 01": ["Gecivaldo", "Ivan"],
-            "Equipe 07": ["Josival", "Johnnes"],
-            "Equipe 08": ["Jhonny leandro", "João antônio"]
+            "Equipe 01": ["Gecivaldo", "Carlos Souza"],
+            "Equipe 07": ["Pedro Santos", "Lucas Lima"],
+            "Equipe 03": ["Marcos Oliveira", "André Costa"]
         },
         demandas: [
             "Manutenção Preventiva",
@@ -172,15 +183,62 @@
         membros.forEach(m => selectResp.appendChild(new Option(m, m)));
     }
 
+    // VALIDA O PREENCHIMENTO EM ETAPAS
+    function validarFluxo() {
+        const eq = document.getElementById('selectEquipe').value;
+        const resp = document.getElementById('selectResponsavel').value;
+        const data = document.getElementById('dataAtual').value;
+        const local = document.getElementById('localRef').value.trim();
+        const demanda = document.getElementById('selectDemanda').value;
+
+        const sec1Ok = eq !== "" && resp !== "" && data !== "" && local !== "";
+        
+        // Libera/Bloqueia Seção 2
+        document.getElementById('sec2').classList.toggle('disabled', !sec1Ok);
+
+        const sec2Ok = sec1Ok && demanda !== "";
+
+        // Libera/Bloqueia Seção 3
+        document.getElementById('sec3').classList.toggle('disabled', !sec2Ok);
+
+        // Valida Seção 3 (Atendimento)
+        const cards = document.querySelectorAll('#services .card');
+        let sec3Ok = false;
+        if (sec2Ok && cards.length > 0) {
+            let todosValidos = true;
+            cards.forEach(card => {
+                const s = card.querySelector('select').value;
+                const q = card.querySelector('input[type="number"]').value;
+                if (!s || !q || parseFloat(q) <= 0) todosValidos = false;
+            });
+            sec3Ok = todosValidos;
+        }
+
+        // Libera/Bloqueia Seções Finais e Botão de Envio
+        document.getElementById('sec4').classList.toggle('disabled', !sec3Ok);
+        document.getElementById('sec5').classList.toggle('disabled', !sec3Ok);
+        document.getElementById('sec6').classList.toggle('disabled', !sec3Ok);
+
+        const btn = document.getElementById('btnEnviar');
+        if (sec3Ok) {
+            btn.disabled = false;
+            btn.textContent = "Enviar registro";
+        } else {
+            btn.disabled = true;
+            btn.textContent = "Preencha os campos obrigatórios";
+        }
+    }
+
     function add() {
         let d = document.createElement('div');
         d.className = 'card';
-        d.innerHTML = '<div class="grid"><select onchange="u(this)"><option value="">Selecione o serviço</option>' +
+        d.innerHTML = '<div class="grid"><select onchange="u(this); validarFluxo();"><option value="">Selecione o serviço</option>' +
             Object.keys(APP_DATA.servicos).map(x => '<option value="' + x + '">' + x + '</option>').join('') +
-            '</select><input type="number" min="0" step=".01" placeholder="Qtd."></div>' +
+            '</select><input type="number" min="0" step=".01" placeholder="Qtd." oninput="validarFluxo()"></div>' +
             '<div class="unit">Unidade: <span>—</span></div>' +
-            '<button class="btn rm" type="button" onclick="this.parentElement.remove()">Remover</button>';
+            '<button class="btn rm" type="button" onclick="this.parentElement.remove(); validarFluxo();">Remover</button>';
         document.getElementById('services').appendChild(d);
+        validarFluxo();
     }
 
     function addOcorrencia() {
@@ -209,24 +267,13 @@
         const local = document.getElementById('localRef').value.trim();
         const demanda = document.getElementById('selectDemanda').value;
 
-        if (!equipe || !responsavel || !data || !local || !demanda) {
-            return alert('Preencha os campos obrigatórios da seção 1 e 2.');
-        }
-
         const cards = document.querySelectorAll('#services .card');
-        if (cards.length === 0) return alert('Adicione pelo menos um serviço.');
-
         const servicosExecutados = [];
-        let servicoInvalido = false;
-
         cards.forEach(card => {
             const servico = card.querySelector('select').value;
             const qtd = card.querySelector('input[type="number"]').value;
-            if (!servico || !qtd || parseFloat(qtd) <= 0) servicoInvalido = true;
             servicosExecutados.push(`${servico} (${qtd} ${APP_DATA.servicos[servico] || ''})`);
         });
-
-        if (servicoInvalido) return alert('Preencha a quantidade de todos os serviços adicionados.');
 
         const ocorrenciasExecutadas = [];
         const houveImprevisto = document.querySelector('input[name="i"]:checked').value === 's';
@@ -260,6 +307,10 @@
             observacoes: document.getElementById('obsGerais').value
         };
 
+        const btn = document.getElementById('btnEnviar');
+        btn.disabled = true;
+        btn.textContent = "Enviando...";
+
         try {
             await fetch(GOOGLE_SCRIPT_URL, {
                 method: "POST",
@@ -272,6 +323,8 @@
             document.getElementById('ok').style.display = 'block';
         } catch (err) {
             alert('Erro ao enviar registro.');
+            btn.disabled = false;
+            btn.textContent = "Enviar registro";
         }
     }
 
