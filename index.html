@@ -28,28 +28,9 @@
         .send { background: #123b5d; color: white; font-size: 16px; margin-top: 10px; }
         .hidden { display: none !important; }
         .note { font-size: 12px; color: #6b7280; margin-top: 6px; }
-
-        .editor-panel { display: none; background: #eff6ff; border: 2px dashed #2563eb; padding: 15px; margin: 15px; border-radius: 10px; }
-        .edit-mode .editor-panel { display: block; }
-        .edit-btn { background: #2563eb; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 5px; }
-        .edit-btn.del { background: #dc2626; }
-        .edit-btn.warn { background: #d97706; }
-        .edit-box { border-bottom: 1px dashed #cbd5e1; padding-bottom: 12px; margin-bottom: 12px; }
-        
-        .membro-item { display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 6px; margin-top: 4px; font-size: 14px; }
-        .membro-item button { background: #fee2e2; color: #991b1b; border: 1px solid #f87171; padding: 3px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; }
-        
-        #loading { position: fixed; top: 0; left: 0; width: 100%; background: #2563eb; color: white; text-align: center; padding: 8px; font-size: 13px; font-weight: bold; display: none; z-index: 999; }
     </style>
 </head>
 <body>
-
-<div id="loading">Sincronizando dados com a nuvem...</div>
-
-<div class="top-bar hidden" id="adminBar">
-    <span><b>Painel Interno de Gestão</b></span>
-    <button type="button" onclick="toggleModoEdicao()">⚙️ Painel de Edição</button>
-</div>
 
 <div class="app">
     <header class="top">
@@ -57,52 +38,6 @@
         <p>Infraestrutura — protótipo de campo</p>
     </header>
 
-    <!-- PAINEL DE GESTÃO E EDIÇÃO (APENAS PC) -->
-    <div class="editor-panel">
-        <h3 style="margin-top:0; color:#1e40af;">⚙️ Gerenciar Opções na Nuvem</h3>
-        
-        <div class="edit-box">
-            <h4 style="margin:5px 0; color:#123b5d;">👥 Equipes e Técnicos</h4>
-            <label>Selecione a equipe:</label>
-            <select id="editEquipeSelect" onchange="carregarMembrosEditor()"></select>
-            <label>Renomear Equipe Selecionada:</label>
-            <input id="novoNomeEquipeInput" placeholder="Ex: Equipe 01">
-            <div style="display:flex; gap:6px;">
-                <button class="edit-btn warn" type="button" onclick="renomearEquipe()">Renomear Equipe</button>
-                <button class="edit-btn del" type="button" onclick="excluirEquipe()">Excluir Equipe</button>
-            </div>
-
-            <label style="margin-top:10px;">Membros da equipe selecionada:</label>
-            <div id="listaMembrosEditor" style="margin-bottom: 8px;"></div>
-            <input id="novoMembroNome" placeholder="Nome do Novo Técnico">
-            <button class="edit-btn" type="button" onclick="cadastrarMembro()">+ Adicionar Membro</button>
-
-            <label style="margin-top:10px;">Criar Nova Equipe:</label>
-            <input id="criarEquipeInput" placeholder="Ex: Equipe 15">
-            <button class="edit-btn" type="button" onclick="criarEquipe()">+ Criar Equipe</button>
-        </div>
-
-        <div class="edit-box">
-            <h4 style="margin:5px 0; color:#123b5d;">📋 Tipos de Demanda</h4>
-            <input id="novaDemandaInput" placeholder="Ex: Vistoria especial">
-            <button class="edit-btn" type="button" onclick="adicionarDemanda()">+ Adicionar Demanda</button>
-        </div>
-
-        <div class="edit-box">
-            <h4 style="margin:5px 0; color:#123b5d;">🔧 Serviços Realizados</h4>
-            <input id="novoServicoInput" placeholder="Ex: Fusão de Fibra Óptica">
-            <input id="novaUnidadeInput" placeholder="Ex: unidade, metro, caixa" style="margin-top:5px;">
-            <button class="edit-btn" type="button" onclick="adicionarServico()">+ Adicionar Serviço</button>
-        </div>
-
-        <div>
-            <h4 style="margin:5px 0; color:#123b5d;">⚠️ Tipos de Ocorrências / Imprevistos</h4>
-            <input id="novaOcorrenciaInput" placeholder="Ex: Chuva forte / Intempérie">
-            <button class="edit-btn" type="button" onclick="adicionarOcorrencia()">+ Adicionar Ocorrência</button>
-        </div>
-    </div>
-
-    <!-- FORMULÁRIO PRINCIPAL (CAMPO / CELULAR) -->
     <main id="form">
         <div class="sec">
             <div class="t">1. Identificação</div>
@@ -179,108 +114,50 @@
 </div>
 
 <script>
-    const BIN_ID = "65e23652dc74654018ad8f8b";
-    const API_URL = "https://api.jsonbin.io/v3/b/" + BIN_ID;
-    const API_KEY = "$2a$10$WkGfR4B9bW6L9wZ8wKjLbeJ2d0L8XG1w.E9M7oO9N9uG.8yG2yJ2W";
+    // EDITAR AS EQUIPES E SEUS INTEGRANTES AQUI:
+    const APP_DATA = {
+        equipes: {
+            "Equipe 01": ["João Silva", "Carlos Souza"],
+            "Equipe 02": ["Pedro Santos", "Lucas Lima"],
+            "Equipe 03": ["Marcos Oliveira", "André Costa"]
+        },
+        demandas: [
+            "Manutenção Preventiva",
+            "Atendimento Emergencial",
+            "Instalação de Fibra",
+            "Vistoria Técnica"
+        ],
+        servicos: {
+            "Lançamento de Cabo": "metro",
+            "Fusão de Fibra": "unidade",
+            "Instalação de Caixa ATO": "unidade",
+            "Troca de Poste": "unidade"
+        },
+        ocorrencias: [
+            "Chuva / Intempérie",
+            "Acesso Impedido",
+            "Falta de Material",
+            "Trânsito Intenso"
+        ]
+    };
+
     const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwSlOk18Q3iODzhSif_s-JKODaZZyBiVAEoEk1W20pJ8UaFIz5N94I0js0LzPp0cnka/exec";
 
-    let modoEdicao = false;
-    let appData = { equipes: {}, demandas: [], servicos: {}, ocorrencias: [] };
+    function carregarDados() {
+        const selectEquipe = document.getElementById('selectEquipe');
+        selectEquipe.innerHTML = '<option value="">Selecione</option>';
+        Object.keys(APP_DATA.equipes).forEach(eq => {
+            selectEquipe.appendChild(new Option(eq, eq));
+        });
 
-    // LIMPA QUALQUER LIXO ANTIGO GUARDADO NO CELULAR
-    localStorage.clear();
-
-    function showLoading(show) {
-        document.getElementById('loading').style.display = show ? 'block' : 'none';
-    }
-
-    // BUSCA OS DADOS ATUALIZADOS DA NUVEM (ONLINE)
-    async function carregarDadosNuvem() {
-        showLoading(true);
-        try {
-            const res = await fetch(API_URL + '/latest?nocache=' + new Date().getTime(), {
-                headers: { "X-Master-Key": API_KEY }
-            });
-            
-            if (res.ok) {
-                const data = await res.json();
-                if (data && data.record) {
-                    appData = data.record;
-                }
-            }
-        } catch (e) {
-            console.error("Erro na conexão com a nuvem.");
-        } finally {
-            renderizarTudo();
-            showLoading(false);
-        }
-    }
-
-    // SALVA ALTERAÇÕES FEITAS NO PC DIRETO NA NUVEM
-    async function salvarDadosNuvem() {
-        showLoading(true);
-        renderizarTudo();
-
-        try {
-            await fetch(API_URL, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    "X-Master-Key": API_KEY
-                },
-                body: JSON.stringify(appData)
-            });
-        } catch (e) {
-            alert("Erro ao salvar na nuvem.");
-        } finally {
-            showLoading(false);
-        }
-    }
-
-    function renderizarTudo() {
-        renderizarEquipes();
-        renderizarDemandas();
-        atualizarSelectsServicos();
-        atualizarSelectsOcorrencias();
-    }
-
-    function renderizarEquipes() {
-        const selectForm = document.getElementById('selectEquipe');
-        const selectEdit = document.getElementById('editEquipeSelect');
-        
-        const valorAtualForm = selectForm.value;
-        const valorAtualEdit = selectEdit.value;
-
-        selectForm.innerHTML = '<option value="">Selecione</option>';
-        selectEdit.innerHTML = '';
-
-        if (appData.equipes) {
-            Object.keys(appData.equipes).forEach(eq => {
-                selectForm.appendChild(new Option(eq, eq));
-                selectEdit.appendChild(new Option(eq, eq));
-            });
-        }
-
-        if (valorAtualForm) selectForm.value = valorAtualForm;
-        if (valorAtualEdit) selectEdit.value = valorAtualEdit;
-
-        atualizarMembros();
-        carregarMembrosEditor();
-    }
-
-    function renderizarDemandas() {
         const selectDemanda = document.getElementById('selectDemanda');
         selectDemanda.innerHTML = '<option value="">Selecione</option>';
-        if (appData.demandas) {
-            appData.demandas.forEach(d => selectDemanda.appendChild(new Option(d, d)));
-        }
+        APP_DATA.demandas.forEach(d => selectDemanda.appendChild(new Option(d, d)));
     }
 
     function atualizarMembros() {
         const equipe = document.getElementById('selectEquipe').value;
         const selectResp = document.getElementById('selectResponsavel');
-
-        const respSelecionadoAntes = selectResp.value;
         selectResp.innerHTML = '';
 
         if (!equipe) {
@@ -289,144 +166,17 @@
             return;
         }
 
-        const membros = (appData.equipes && appData.equipes[equipe]) ? appData.equipes[equipe] : [];
-
+        const membros = APP_DATA.equipes[equipe] || [];
         selectResp.disabled = false;
         selectResp.appendChild(new Option("Selecione o responsável", ""));
-
-        if (membros.length > 0) {
-            membros.forEach(m => selectResp.appendChild(new Option(m, m)));
-            if (respSelecionadoAntes) selectResp.value = respSelecionadoAntes;
-        } else {
-            selectResp.appendChild(new Option("(Nenhum membro cadastrado nesta equipe)", ""));
-        }
-    }
-
-    function carregarMembrosEditor() {
-        const equipe = document.getElementById('editEquipeSelect').value;
-        const container = document.getElementById('listaMembrosEditor');
-        container.innerHTML = '';
-
-        if (equipe && appData.equipes && appData.equipes[equipe]) {
-            if (appData.equipes[equipe].length === 0) {
-                container.innerHTML = '<div style="font-size:12px; color:#6b7280;">Nenhum membro cadastrado nesta equipe.</div>';
-                return;
-            }
-            appData.equipes[equipe].forEach((membro, index) => {
-                let item = document.createElement('div');
-                item.className = 'membro-item';
-                item.innerHTML = `<span>${membro}</span><button type="button" onclick="removerMembro('${equipe}', ${index})">Excluir</button>`;
-                container.appendChild(item);
-            });
-        }
-    }
-
-    function removerMembro(equipe, index) { 
-        appData.equipes[equipe].splice(index, 1); 
-        salvarDadosNuvem(); 
-    }
-
-    function cadastrarMembro() {
-        const eqTarget = document.getElementById('editEquipeSelect').value;
-        const nomeInput = document.getElementById('novoMembroNome');
-        const nome = nomeInput.value.trim();
-
-        if (nome !== "" && eqTarget) {
-            if (!appData.equipes[eqTarget]) appData.equipes[eqTarget] = [];
-            appData.equipes[eqTarget].push(nome);
-            nomeInput.value = "";
-            carregarMembrosEditor();
-            atualizarMembros();
-            salvarDadosNuvem();
-        } else {
-            alert("Selecione uma equipe e digite um nome válido.");
-        }
-    }
-
-    function renomearEquipe() {
-        const eqAntiga = document.getElementById('editEquipeSelect').value;
-        const novoNome = document.getElementById('novoNomeEquipeInput').value.trim();
-        if (!eqAntiga || !novoNome) return;
-        appData.equipes[novoNome] = appData.equipes[eqAntiga];
-        delete appData.equipes[eqAntiga];
-        document.getElementById('novoNomeEquipeInput').value = '';
-        salvarDadosNuvem();
-    }
-
-    function criarEquipe() {
-        const novoNome = document.getElementById('criarEquipeInput').value.trim();
-        if (!novoNome || appData.equipes[novoNome]) return;
-        appData.equipes[novoNome] = [];
-        document.getElementById('criarEquipeInput').value = '';
-        salvarDadosNuvem();
-    }
-
-    function excluirEquipe() {
-        const equipe = document.getElementById('editEquipeSelect').value;
-        if (equipe && confirm(`Tem certeza que deseja excluir a equipe ${equipe}?`)) {
-            delete appData.equipes[equipe];
-            salvarDadosNuvem();
-        }
-    }
-
-    function adicionarDemanda() {
-        const input = document.getElementById('novaDemandaInput');
-        const val = input.value.trim();
-        if (val && !appData.demandas.includes(val)) {
-            appData.demandas.push(val);
-            input.value = '';
-            salvarDadosNuvem();
-        }
-    }
-
-    function adicionarServico() {
-        const inputServ = document.getElementById('novoServicoInput');
-        const inputUn = document.getElementById('novaUnidadeInput');
-        const serv = inputServ.value.trim();
-        const un = inputUn.value.trim() || 'unidade';
-        if (serv) {
-            appData.servicos[serv] = un;
-            inputServ.value = '';
-            inputUn.value = '';
-            salvarDadosNuvem();
-        }
-    }
-
-    function adicionarOcorrencia() {
-        const input = document.getElementById('novaOcorrenciaInput');
-        const val = input.value.trim();
-        if (val && !appData.ocorrencias.includes(val)) {
-            appData.ocorrencias.push(val);
-            input.value = '';
-            salvarDadosNuvem();
-        }
-    }
-
-    function atualizarSelectsServicos() {
-        const selects = document.querySelectorAll('#services select');
-        selects.forEach(select => {
-            const valorSelecionado = select.value;
-            select.innerHTML = '<option value="">Selecione o serviço</option>' +
-                Object.keys(appData.servicos || {}).map(x => '<option value="' + x + '">' + x + '</option>').join('');
-            select.value = valorSelecionado;
-        });
-    }
-
-    function atualizarSelectsOcorrencias() {
-        const selects = document.querySelectorAll('#occurrences select');
-        selects.forEach(select => {
-            const valorSelecionado = select.value;
-            select.innerHTML = '<option value="">Selecione a ocorrência</option>' +
-                (appData.ocorrencias || []).map(x => '<option value="' + x + '">' + x + '</option>').join('');
-            select.value = valorSelecionado;
-        });
+        membros.forEach(m => selectResp.appendChild(new Option(m, m)));
     }
 
     function add() {
         let d = document.createElement('div');
         d.className = 'card';
         d.innerHTML = '<div class="grid"><select onchange="u(this)"><option value="">Selecione o serviço</option>' +
-            Object.keys(appData.servicos || {}).map(x => '<option value="' + x + '">' + x + '</option>').join('') +
+            Object.keys(APP_DATA.servicos).map(x => '<option value="' + x + '">' + x + '</option>').join('') +
             '</select><input type="number" min="0" step=".01" placeholder="Qtd."></div>' +
             '<div class="unit">Unidade: <span>—</span></div>' +
             '<button class="btn rm" type="button" onclick="this.parentElement.remove()">Remover</button>';
@@ -437,7 +187,7 @@
         let d = document.createElement('div');
         d.className = 'card';
         d.innerHTML = '<select><option value="">Selecione a ocorrência</option>' +
-            (appData.ocorrencias || []).map(x => '<option value="' + x + '">' + x + '</option>').join('') +
+            APP_DATA.ocorrencias.map(x => '<option value="' + x + '">' + x + '</option>').join('') +
             '</select>' +
             '<textarea placeholder="Descrição breve do imprevisto..." style="margin-top: 8px; min-height: 60px;"></textarea>' +
             '<button class="btn rm" type="button" onclick="this.parentElement.remove()">Remover</button>';
@@ -445,16 +195,11 @@
     }
 
     function u(s) { 
-        s.parentElement.parentElement.querySelector('span').textContent = appData.servicos[s.value] || '—'; 
+        s.parentElement.parentElement.querySelector('span').textContent = APP_DATA.servicos[s.value] || '—'; 
     }
 
     function tog(id, n) { 
         document.getElementById(id).classList.toggle('hidden', document.querySelector('input[name=' + n + ']:checked').value !== 's'); 
-    }
-
-    function toggleModoEdicao() {
-        modoEdicao = !modoEdicao;
-        document.body.classList.toggle('edit-mode', modoEdicao);
     }
 
     async function enviar() {
@@ -477,10 +222,8 @@
         cards.forEach(card => {
             const servico = card.querySelector('select').value;
             const qtd = card.querySelector('input[type="number"]').value;
-            if (!servico || !qtd || parseFloat(qtd) <= 0) {
-                servicoInvalido = true;
-            }
-            servicosExecutados.push(`${servico} (${qtd} ${appData.servicos[servico] || ''})`);
+            if (!servico || !qtd || parseFloat(qtd) <= 0) servicoInvalido = true;
+            servicosExecutados.push(`${servico} (${qtd} ${APP_DATA.servicos[servico] || ''})`);
         });
 
         if (servicoInvalido) return alert('Preencha a quantidade de todos os serviços adicionados.');
@@ -490,21 +233,17 @@
         
         if (houveImprevisto) {
             const cardsOcc = document.querySelectorAll('#occurrences .card');
-            if (cardsOcc.length === 0) {
-                return alert('Você marcou que houve imprevisto. Adicione pelo menos uma ocorrência ou altere para "Não".');
-            }
+            if (cardsOcc.length === 0) return alert('Adicione pelo menos uma ocorrência.');
 
             let ocorrenciaInvalida = false;
             cardsOcc.forEach(card => {
                 const tipo = card.querySelector('select').value;
                 const descricao = card.querySelector('textarea').value.trim();
-                if (!tipo) {
-                    ocorrenciaInvalida = true;
-                }
+                if (!tipo) ocorrenciaInvalida = true;
                 ocorrenciasExecutadas.push(`${tipo}${descricao ? ': ' + descricao : ''}`);
             });
 
-            if (ocorrenciaInvalida) return alert('Selecione o tipo para todas as ocorrências adicionadas.');
+            if (ocorrenciaInvalida) return alert('Selecione o tipo de todas as ocorrências.');
         }
 
         const houveTransporte = document.querySelector('input[name="tr"]:checked').value === 's';
@@ -521,8 +260,6 @@
             observacoes: document.getElementById('obsGerais').value
         };
 
-        showLoading(true);
-
         try {
             await fetch(GOOGLE_SCRIPT_URL, {
                 method: "POST",
@@ -534,23 +271,12 @@
             document.getElementById('form').style.display = 'none';
             document.getElementById('ok').style.display = 'block';
         } catch (err) {
-            alert('Erro ao enviar para o Google Sheets.');
-            console.error(err);
-        } finally {
-            showLoading(false);
-        }
-    }
-
-    function verificarPermissaoAdmin() {
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('admin') === '1234') {
-            document.getElementById('adminBar').classList.remove('hidden');
+            alert('Erro ao enviar registro.');
         }
     }
 
     try { document.getElementById('dataAtual').value = new Date().toISOString().split('T')[0]; } catch(e){}
-    verificarPermissaoAdmin();
-    carregarDadosNuvem();
+    carregarDados();
     add();
 </script>
 </body>
