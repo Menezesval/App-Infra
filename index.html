@@ -39,7 +39,7 @@
         .membro-item { display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 6px; margin-top: 4px; font-size: 14px; }
         .membro-item button { background: #fee2e2; color: #991b1b; border: 1px solid #f87171; padding: 3px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; }
         
-        #loading { position: fixed; top: 0; left: 0; width: 100%; background: #2563eb; color: white; text-align: center; padding: 5px; font-size: 12px; font-weight: bold; display: none; z-index: 999; }
+        #loading { position: fixed; top: 0; left: 0; width: 100%; background: #2563eb; color: white; text-align: center; padding: 8px; font-size: 13px; font-weight: bold; display: none; z-index: 999; }
     </style>
 </head>
 <body>
@@ -99,6 +99,10 @@
             <h4 style="margin:5px 0; color:#123b5d;">⚠️ Tipos de Ocorrências / Imprevistos</h4>
             <input id="novaOcorrenciaInput" placeholder="Ex: Chuva forte / Intempérie">
             <button class="edit-btn" type="button" onclick="adicionarOcorrencia()">+ Adicionar Ocorrência</button>
+        </div>
+        
+        <div style="margin-top:15px; border-top: 1px solid #cbd5e1; padding-top: 10px;">
+            <button class="edit-btn del" type="button" onclick="forcarResetNuvem()">⚠️ Forçar Redefinição Geral da Nuvem</button>
         </div>
     </div>
 
@@ -182,12 +186,12 @@
     const BIN_ID = "65e23652dc74654018ad8f8b";
     const API_URL = "https://api.jsonbin.io/v3/b/" + BIN_ID;
     const API_KEY = "$2a$10$WkGfR4B9bW6L9wZ8wKjLbeJ2d0L8XG1w.E9M7oO9N9uG.8yG2yJ2W";
-    
     const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwSlOk18Q3iODzhSif_s-JKODaZZyBiVAEoEk1W20pJ8UaFIz5N94I0js0LzPp0cnka/exec";
 
     let modoEdicao = false;
     
-    let appData = {
+    // ESTRUTURA BASE ATUALIZADA
+    const padraoAppData = {
         equipes: { 
             "Equipe 01": ["Gecivaldo", "Ivan"], 
             "Equipe 07": ["Josival", "Johnnes"], 
@@ -200,6 +204,8 @@
         ocorrencias: ["Cabo baixo","Cabo rompido","Cabo danificado","Cabo diferente do projeto","Ferragem danificada","Falta de ferragem","Poste inadequado","Caixa danificada","CTO sem sinal","Fibra sem identificação","Fibra diferente do projeto","Fusão com problema","Caixa em posição inadequada","Rede existente diferente do projeto","Necessidade de serviço adicional","Acesso ao local impossibilitado","Falta de material","Outro imprevisto","Falta de fusão existente"],
         registros: []
     };
+
+    let appData = JSON.parse(JSON.stringify(padraoAppData));
 
     function showLoading(show) {
         document.getElementById('loading').style.display = show ? 'block' : 'none';
@@ -219,15 +225,9 @@
                     if (!appData.registros) appData.registros = [];
                     localStorage.setItem('appData_infra', JSON.stringify(appData));
                 }
-            } else {
-                throw new Error("Falha ao buscar da nuvem");
             }
         } catch (e) {
-            console.log("Usando backup local:", e);
-            const localData = localStorage.getItem('appData_infra');
-            if (localData) {
-                appData = JSON.parse(localData);
-            }
+            console.log("Erro ao carregar dados:", e);
         } finally {
             renderizarTudo();
             showLoading(false);
@@ -237,7 +237,6 @@
     async function salvarDadosNuvem() {
         showLoading(true);
         renderizarTudo();
-        
         localStorage.setItem('appData_infra', JSON.stringify(appData));
 
         try {
@@ -250,9 +249,19 @@
                 body: JSON.stringify(appData)
             });
         } catch (e) {
-            console.warn("Nuvem inacessível. Gravado no armazenamento local.");
+            console.warn("Erro ao salvar na nuvem.");
         } finally {
             showLoading(false);
+        }
+    }
+
+    async function forcarResetNuvem() {
+        if (confirm("Isso atualizará todas as equipes e opções para o modelo mais recente na nuvem. Continuar?")) {
+            localStorage.clear();
+            appData = JSON.parse(JSON.stringify(padraoAppData));
+            await salvarDadosNuvem();
+            alert("Nuvem atualizada com sucesso! Atualize a página do seu celular.");
+            location.reload();
         }
     }
 
@@ -352,10 +361,8 @@
 
         if (nome !== "" && eqTarget) {
             if (!appData.equipes[eqTarget]) appData.equipes[eqTarget] = [];
-            
             appData.equipes[eqTarget].push(nome);
             nomeInput.value = "";
-            
             carregarMembrosEditor();
             atualizarMembros();
             salvarDadosNuvem();
@@ -405,7 +412,6 @@
         const inputUn = document.getElementById('novaUnidadeInput');
         const serv = inputServ.value.trim();
         const un = inputUn.value.trim() || 'unidade';
-        
         if (serv) {
             appData.servicos[serv] = un;
             inputServ.value = '';
