@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Registro Infra</title>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Registro Infra v3</title>
     <style>
         * { box-sizing: border-box; }
         body { margin: 0; background: #eef2f5; font-family: Arial, sans-serif; color: #1f2937; }
@@ -53,7 +56,7 @@
 
 <div class="app">
     <header class="top">
-        <h1>Registro de Produção</h1>
+        <h1>Registro de Produção v3</h1>
         <p>Infraestrutura — protótipo de campo</p>
     </header>
 
@@ -99,10 +102,6 @@
             <h4 style="margin:5px 0; color:#123b5d;">⚠️ Tipos de Ocorrências / Imprevistos</h4>
             <input id="novaOcorrenciaInput" placeholder="Ex: Chuva forte / Intempérie">
             <button class="edit-btn" type="button" onclick="adicionarOcorrencia()">+ Adicionar Ocorrência</button>
-        </div>
-        
-        <div style="margin-top:15px; border-top: 1px solid #cbd5e1; padding-top: 10px;">
-            <button class="edit-btn del" type="button" onclick="forcarResetNuvem()">⚠️ Forçar Redefinição Geral da Nuvem</button>
         </div>
     </div>
 
@@ -183,15 +182,12 @@
 </div>
 
 <script>
-    const BIN_ID = "65e23652dc74654018ad8f8b";
-    const API_URL = "https://api.jsonbin.io/v3/b/" + BIN_ID;
-    const API_KEY = "$2a$10$WkGfR4B9bW6L9wZ8wKjLbeJ2d0L8XG1w.E9M7oO9N9uG.8yG2yJ2W";
     const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwSlOk18Q3iODzhSif_s-JKODaZZyBiVAEoEk1W20pJ8UaFIz5N94I0js0LzPp0cnka/exec";
 
     let modoEdicao = false;
     
-    // ESTRUTURA BASE ATUALIZADA
-    const padraoAppData = {
+    // DADOS MESTRES DENTRO DO CÓDIGO
+    const dadosPadrao = {
         equipes: { 
             "Equipe 01": ["Gecivaldo", "Ivan"], 
             "Equipe 07": ["Josival", "Johnnes"], 
@@ -201,68 +197,20 @@
         },
         demandas: ["Expansão de rede", "Ampliação de rede existente", "Alteração na capacidade da CTO", "Alteração na capacidade da CEP", "Manutenção corretiva", "Manutenção preventiva", "Atendimento emergencial", "Vistoria / levantamento", "Adequação de infraestrutura"],
         servicos: {"Lançamento de cabo óptico":"metro","Retirada de cabo sem uso":"metro","Reposicionamento de cabo":"metro","Organização de reserva técnica":"unidade","Instalação de cordoalha":"metro","Organização de cabo em poste":"unidade/poste","Substituição de trecho de cabo":"metro","Instalação de CTO":"unidade","Instalação de CEO":"unidade","Instalação de CEP":"unidade","Modificação de CTO":"unidade","Modificação de CEO":"unidade","Modificação de CEP":"unidade","Pintura de CTO":"unidade","Pintura de CEO":"unidade","Pintura de CEP":"unidade","Substituição de caixa":"unidade","Reorganização de reserva da CTO":"unidade","Identificação de clientes nas portas da CTO":"caixa","Rebaixamento de caixa":"unidade","Identificação de fibra":"fibra","Organização de fibras":"unidade/caixa","Correção de fusão":"serviço","Teste com OTDR":"unidade","Verificação de potência óptica":"caixa","Certificação da rede":"unidade","Implantação de poste":"unidade","Retirada de poste":"unidade","Substituição de poste":"unidade","Reposicionamento de poste":"unidade","Instalação de ferragem":"unidade","Retirada de ferragem":"unidade","Reparo de cabo danificado":"metro","Reparo de caixa danificada":"unidade","Substituição de trecho de rede":"metro","Retirada de rede abandonada":"metro","Regularização de rede":"unidade","Levantamento de rota":"levantamento","Levantamento de posteamento":"poste","Levantamento para expansão":"levantamento"},
-        ocorrencias: ["Cabo baixo","Cabo rompido","Cabo danificado","Cabo diferente do projeto","Ferragem danificada","Falta de ferragem","Poste inadequado","Caixa danificada","CTO sem sinal","Fibra sem identificação","Fibra diferente do projeto","Fusão com problema","Caixa em posição inadequada","Rede existente diferente do projeto","Necessidade de serviço adicional","Acesso ao local impossibilitado","Falta de material","Outro imprevisto","Falta de fusão existente"],
-        registros: []
+        ocorrencias: ["Cabo baixo","Cabo rompido","Cabo danificado","Cabo diferente do projeto","Ferragem danificada","Falta de ferragem","Poste inadequado","Caixa danificada","CTO sem sinal","Fibra sem identificação","Fibra diferente do projeto","Fusão com problema","Caixa em posição inadequada","Rede existente diferente do projeto","Necessidade de serviço adicional","Acesso ao local impossibilitado","Falta de material","Outro imprevisto","Falta de fusão existente"]
     };
 
-    let appData = JSON.parse(JSON.stringify(padraoAppData));
+    let appData = JSON.parse(JSON.stringify(dadosPadrao));
 
-    function showLoading(show) {
-        document.getElementById('loading').style.display = show ? 'block' : 'none';
+    // Carregar do localStorage se existir alterações locais recentes
+    const local = localStorage.getItem('appData_infra_v3');
+    if (local) {
+        try { appData = JSON.parse(local); } catch(e){}
     }
 
-    async function carregarDadosNuvem() {
-        showLoading(true);
-        try {
-            const res = await fetch(API_URL + '/latest?nocache=' + new Date().getTime(), {
-                headers: { "X-Master-Key": API_KEY }
-            });
-            
-            if (res.ok) {
-                const data = await res.json();
-                if (data && data.record && data.record.equipes) {
-                    appData = data.record;
-                    if (!appData.registros) appData.registros = [];
-                    localStorage.setItem('appData_infra', JSON.stringify(appData));
-                }
-            }
-        } catch (e) {
-            console.log("Erro ao carregar dados:", e);
-        } finally {
-            renderizarTudo();
-            showLoading(false);
-        }
-    }
-
-    async function salvarDadosNuvem() {
-        showLoading(true);
+    function salvarLocal() {
+        localStorage.setItem('appData_infra_v3', JSON.stringify(appData));
         renderizarTudo();
-        localStorage.setItem('appData_infra', JSON.stringify(appData));
-
-        try {
-            await fetch(API_URL, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    "X-Master-Key": API_KEY
-                },
-                body: JSON.stringify(appData)
-            });
-        } catch (e) {
-            console.warn("Erro ao salvar na nuvem.");
-        } finally {
-            showLoading(false);
-        }
-    }
-
-    async function forcarResetNuvem() {
-        if (confirm("Isso atualizará todas as equipes e opções para o modelo mais recente na nuvem. Continuar?")) {
-            localStorage.clear();
-            appData = JSON.parse(JSON.stringify(padraoAppData));
-            await salvarDadosNuvem();
-            alert("Nuvem atualizada com sucesso! Atualize a página do seu celular.");
-            location.reload();
-        }
     }
 
     function renderizarTudo() {
@@ -351,7 +299,7 @@
 
     function removerMembro(equipe, index) { 
         appData.equipes[equipe].splice(index, 1); 
-        salvarDadosNuvem(); 
+        salvarLocal(); 
     }
 
     function cadastrarMembro() {
@@ -365,7 +313,7 @@
             nomeInput.value = "";
             carregarMembrosEditor();
             atualizarMembros();
-            salvarDadosNuvem();
+            salvarLocal();
         } else {
             alert("Selecione uma equipe e digite um nome válido.");
         }
@@ -378,7 +326,7 @@
         appData.equipes[novoNome] = appData.equipes[eqAntiga];
         delete appData.equipes[eqAntiga];
         document.getElementById('novoNomeEquipeInput').value = '';
-        salvarDadosNuvem();
+        salvarLocal();
     }
 
     function criarEquipe() {
@@ -386,14 +334,14 @@
         if (!novoNome || appData.equipes[novoNome]) return;
         appData.equipes[novoNome] = [];
         document.getElementById('criarEquipeInput').value = '';
-        salvarDadosNuvem();
+        salvarLocal();
     }
 
     function excluirEquipe() {
         const equipe = document.getElementById('editEquipeSelect').value;
         if (equipe && confirm(`Tem certeza que deseja excluir a equipe ${equipe}?`)) {
             delete appData.equipes[equipe];
-            salvarDadosNuvem();
+            salvarLocal();
         }
     }
 
@@ -403,7 +351,7 @@
         if (val && !appData.demandas.includes(val)) {
             appData.demandas.push(val);
             input.value = '';
-            salvarDadosNuvem();
+            salvarLocal();
         }
     }
 
@@ -416,7 +364,7 @@
             appData.servicos[serv] = un;
             inputServ.value = '';
             inputUn.value = '';
-            salvarDadosNuvem();
+            salvarLocal();
         }
     }
 
@@ -426,7 +374,7 @@
         if (val && !appData.ocorrencias.includes(val)) {
             appData.ocorrencias.push(val);
             input.value = '';
-            salvarDadosNuvem();
+            salvarLocal();
         }
     }
 
@@ -549,7 +497,7 @@
             observacoes: document.getElementById('obsGerais').value
         };
 
-        showLoading(true);
+        document.getElementById('loading').style.display = 'block';
 
         try {
             await fetch(GOOGLE_SCRIPT_URL, {
@@ -559,34 +507,13 @@
                 body: JSON.stringify(payloadEnvio)
             });
 
-            const novoRegistro = {
-                id: Date.now(),
-                equipe,
-                responsavel,
-                data,
-                local,
-                demanda,
-                servicos: servicosExecutados,
-                imprevisto: { houve: houveImprevisto, ocorrencias: ocorrenciasExecutadas },
-                transporte: {
-                    houve: houveTransporte,
-                    tipo: document.getElementById('selectTipoTransporte').value,
-                    viagens: document.getElementById('qtdViagens').value
-                },
-                observacoes: document.getElementById('obsGerais').value
-            };
-
-            if (!appData.registros) appData.registros = [];
-            appData.registros.push(novoRegistro);
-            await salvarDadosNuvem();
-
             document.getElementById('form').style.display = 'none';
             document.getElementById('ok').style.display = 'block';
         } catch (err) {
             alert('Erro ao enviar para o Google Sheets. Verifique sua conexão.');
             console.error(err);
         } finally {
-            showLoading(false);
+            document.getElementById('loading').style.display = 'none';
         }
     }
 
@@ -599,7 +526,7 @@
 
     try { document.getElementById('dataAtual').value = new Date().toISOString().split('T')[0]; } catch(e){}
     verificarPermissaoAdmin();
-    carregarDadosNuvem();
+    renderizarTudo();
     add();
 </script>
 </body>
