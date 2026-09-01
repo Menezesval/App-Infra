@@ -183,7 +183,6 @@
     const API_URL = "https://api.jsonbin.io/v3/b/" + BIN_ID;
     const API_KEY = "$2a$10$WkGfR4B9bW6L9wZ8wKjLbeJ2d0L8XG1w.E9M7oO9N9uG.8yG2yJ2W";
     
-    // INTEGRAÇÃO COM O GOOGLE SHEETS
     const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwSlOk18Q3iODzhSif_s-JKODaZZyBiVAEoEk1W20pJ8UaFIz5N94I0js0LzPp0cnka/exec";
 
     let modoEdicao = false;
@@ -209,11 +208,6 @@
     async function carregarDadosNuvem() {
         showLoading(true);
         try {
-            const localData = localStorage.getItem('appData_infra');
-            if (localData) {
-                appData = JSON.parse(localData);
-            }
-
             const res = await fetch(API_URL + '/latest?nocache=' + new Date().getTime(), {
                 headers: { "X-Master-Key": API_KEY }
             });
@@ -225,9 +219,15 @@
                     if (!appData.registros) appData.registros = [];
                     localStorage.setItem('appData_infra', JSON.stringify(appData));
                 }
+            } else {
+                throw new Error("Falha ao buscar da nuvem");
             }
         } catch (e) {
             console.log("Usando backup local:", e);
+            const localData = localStorage.getItem('appData_infra');
+            if (localData) {
+                appData = JSON.parse(localData);
+            }
         } finally {
             renderizarTudo();
             showLoading(false);
@@ -553,7 +553,6 @@
                 body: JSON.stringify(payloadEnvio)
             });
 
-            // Mantém salvando no backup local e JSONBin
             const novoRegistro = {
                 id: Date.now(),
                 equipe,
