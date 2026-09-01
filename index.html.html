@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro Infra</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; background: #eef2f5; font-family: Arial, sans-serif; color: #1f2937; }
+        .top-bar { background: #0f172a; color: white; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; }
+        .top-bar button { background: #2563eb; color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .app { max-width: 520px; margin: auto; background: white; min-height: 100vh; position: relative; }
+        .top { background: #123b5d; color: white; padding: 22px 18px; }
+        .top h1 { margin: 0; font-size: 21px; }
+        .top p { margin: 6px 0 0; font-size: 13px; }
+        main { padding: 18px; }
+        .sec { margin-bottom: 22px; }
+        .t { font-weight: bold; color: #123b5d; margin-bottom: 10px; }
+        label { display: block; font-size: 13px; font-weight: bold; margin: 9px 0 5px; }
+        input, select, textarea { width: 100%; padding: 13px; border: 1px solid #d1d5db; border-radius: 9px; font-size: 15px; }
+        textarea { min-height: 80px; }
+        .card, .choice { border: 1px solid #dbe2e8; border-radius: 9px; padding: 11px; margin: 7px 0; }
+        .grid { display: grid; grid-template-columns: 1fr 90px; gap: 8px; }
+        .unit { font-size: 12px; color: #6b7280; margin-top: 5px; }
+        .btn { width: 100%; padding: 13px; border: 0; border-radius: 9px; font-weight: bold; cursor: pointer; }
+        .add { background: #e7f0f7; color: #123b5d; }
+        .rm { background: #fee2e2; color: #991b1b; margin-top: 8px; }
+        .send { background: #123b5d; color: white; font-size: 16px; margin-top: 10px; }
+        .hidden { display: none !important; }
+        .note { font-size: 12px; color: #6b7280; margin-top: 6px; }
+
+        .editor-panel { display: none; background: #eff6ff; border: 2px dashed #2563eb; padding: 15px; margin: 15px; border-radius: 10px; }
+        .edit-mode .editor-panel { display: block; }
+        .edit-btn { background: #2563eb; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 5px; }
+        .edit-btn.del { background: #dc2626; }
+        .edit-btn.warn { background: #d97706; }
+        .edit-box { border-bottom: 1px dashed #cbd5e1; padding-bottom: 12px; margin-bottom: 12px; }
+        
+        .membro-item { display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 6px; margin-top: 4px; font-size: 14px; }
+        .membro-item button { background: #fee2e2; color: #991b1b; border: 1px solid #f87171; padding: 3px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; }
+        
+        #loading { position: fixed; top: 0; left: 0; width: 100%; background: #2563eb; color: white; text-align: center; padding: 5px; font-size: 12px; font-weight: bold; display: none; z-index: 999; }
+    </style>
+</head>
+<body>
+
+<div id="loading">Sincronizando dados...</div>
+
+<div class="top-bar hidden" id="adminBar">
+    <span><b>Painel Interno de Gestão</b></span>
+    <button type="button" onclick="toggleModoEdicao()">⚙️ Painel de Edição</button>
+</div>
+
+<div class="app">
+    <header class="top">
+        <h1>Registro de Produção</h1>
+        <p>Infraestrutura — protótipo de campo</p>
+    </header>
+
+    <!-- PAINEL DE GESTÃO E EDIÇÃO -->
+    <div class="editor-panel">
+        <h3 style="margin-top:0; color:#1e40af;">⚙️ Gerenciar Opções</h3>
+        
+        <div class="edit-box">
+            <h4 style="margin:5px 0; color:#123b5d;">👥 Equipes e Técnicos</h4>
+            <label>Selecione a equipe:</label>
+            <select id="editEquipeSelect" onchange="carregarMembrosEditor()"></select>
+            <label>Renomear Equipe Selecionada:</label>
+            <input id="novoNomeEquipeInput" placeholder="Ex: Equipe 01">
+            <div style="display:flex; gap:6px;">
+                <button class="edit-btn warn" type="button" onclick="renomearEquipe()">Renomear Equipe</button>
+                <button class="edit-btn del" type="button" onclick="excluirEquipe()">Excluir Equipe</button>
+            </div>
+
+            <label style="margin-top:10px;">Membros da equipe selecionada:</label>
+            <div id="listaMembrosEditor" style="margin-bottom: 8px;"></div>
+            <input id="novoMembroNome" placeholder="Nome do Novo Técnico">
+            <button class="edit-btn" type="button" onclick="cadastrarMembro()">+ Adicionar Membro</button>
+
+            <label style="margin-top:10px;">Criar Nova Equipe:</label>
+            <input id="criarEquipeInput" placeholder="Ex: Equipe 15">
+            <button class="edit-btn" type="button" onclick="criarEquipe()">+ Criar Equipe</button>
+        </div>
+
+        <div class="edit-box">
+            <h4 style="margin:5px 0; color:#123b5d;">📋 Tipos de Demanda</h4>
+            <input id="novaDemandaInput" placeholder="Ex: Vistoria especial">
+            <button class="edit-btn" type="button" onclick="adicionarDemanda()">+ Adicionar Demanda</button>
+        </div>
+
+        <div class="edit-box">
+            <h4 style="margin:5px 0; color:#123b5d;">🔧 Serviços Realizados</h4>
+            <input id="novoServicoInput" placeholder="Ex: Fusão de Fibra Óptica">
+            <input id="novaUnidadeInput" placeholder="Ex: unidade, metro, caixa" style="margin-top:5px;">
+            <button class="edit-btn" type="button" onclick="adicionarServico()">+ Adicionar Serviço</button>
+        </div>
+
+        <div>
+            <h4 style="margin:5px 0; color:#123b5d;">⚠️ Tipos de Ocorrências / Imprevistos</h4>
+            <input id="novaOcorrenciaInput" placeholder="Ex: Chuva forte / Intempérie">
+            <button class="edit-btn" type="button" onclick="adicionarOcorrencia()">+ Adicionar Ocorrência</button>
+        </div>
+    </div>
+
+    <!-- FORMULÁRIO PRINCIPAL -->
+    <main id="form">
+        <div class="sec">
+            <div class="t">1. Identificação</div>
+            <label>Equipe</label>
+            <select id="selectEquipe" onchange="atualizarMembros()"></select>
+
+            <label>Responsável</label>
+            <select id="selectResponsavel" disabled>
+                <option value="">Selecione primeiro a equipe</option>
+            </select>
+
+            <label>Data</label>
+            <input type="date" id="dataAtual">
+
+            <label>Local / referência</label>
+            <input id="localRef" placeholder="Bairro, cidade ou referência">
+        </div>
+
+        <div class="sec">
+            <div class="t">2. Tipo de demanda</div>
+            <select id="selectDemanda"></select>
+        </div>
+
+        <div class="sec">
+            <div class="t">3. Serviços realizados</div>
+            <div id="services"></div>
+            <button class="btn add" type="button" onclick="add()">+ Adicionar serviço</button>
+            <div class="note">Adicione somente os serviços executados.</div>
+        </div>
+
+        <div class="sec">
+            <div class="t">4. Ocorrências / imprevistos</div>
+            <label>Houve algum imprevisto?</label>
+            <div class="choice"><input type="radio" name="i" value="n" checked onchange="tog('ib','i')"> Não</div>
+            <div class="choice"><input type="radio" name="i" value="s" onchange="tog('ib','i')"> Sim</div>
+            <div id="ib" class="hidden">
+                <div id="occurrences"></div>
+                <button class="btn add" type="button" onclick="addOcorrencia()" style="margin-top: 10px;">+ Adicionar ocorrência</button>
+                <div class="note">Adicione as ocorrências observadas e seus detalhes.</div>
+            </div>
+        </div>
+
+        <div class="sec">
+            <div class="t">5. Transporte de materiais</div>
+            <label>Houve transporte durante o deslocamento?</label>
+            <div class="choice"><input type="radio" name="tr" value="n" checked onchange="tog('tb','tr')"> Não</div>
+            <div class="choice"><input type="radio" name="tr" value="s" onchange="tog('tb','tr')"> Sim</div>
+            <div id="tb" class="hidden">
+                <label>Tipo</label>
+                <select id="selectTipoTransporte">
+                    <option value="Material">Material</option>
+                    <option value="Poste">Poste</option>
+                    <option value="Material + poste">Material + poste</option>
+                </select>
+                <label>Quantidade de viagens</label>
+                <input type="number" id="qtdViagens" min="1" value="1">
+                <div class="note">Uma rota sem desvio conta como 1 viagem, mesmo passando por várias filiais.</div>
+            </div>
+        </div>
+
+        <div class="sec">
+            <div class="t">6. Observações</div>
+            <textarea id="obsGerais" placeholder="Informações adicionais, se necessário."></textarea>
+        </div>
+
+        <button class="btn send" type="button" onclick="enviar()">Enviar registro</button>
+    </main>
+
+    <div id="ok" style="display:none;text-align:center;padding:30px">
+        <h2>✓ Registro enviado</h2>
+        <p>Protótipo: registro concluído.</p>
+        <button class="btn add" onclick="location.reload()" style="margin-top:15px;">Novo Registro</button>
+    </div>
+</div>
+
+<script>
+    const BIN_ID = "65e23652dc74654018ad8f8b";
+    const API_URL = "https://api.jsonbin.io/v3/b/" + BIN_ID;
+    const API_KEY = "$2a$10$WkGfR4B9bW6L9wZ8wKjLbeJ2d0L8XG1w.E9M7oO9N9uG.8yG2yJ2W";
+    
+    // INTEGRAÇÃO COM O GOOGLE SHEETS
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwSlOk18Q3iODzhSif_s-JKODaZZyBiVAEoEk1W20pJ8UaFIz5N94I0js0LzPp0cnka/exec";
+
+    let modoEdicao = false;
+    
+    let appData = {
+        equipes: { 
+            "Equipe 01": ["Gecivaldo", "Ivan"], 
+            "Equipe 07": ["Josival", "Johnnes"], 
+            "Equipe 08": ["Jhonny", "Leandro", "João Antônio"], 
+            "Equipe 11": ["José Ailson", "Vanderlei"], 
+            "Equipe 22": ["Fernando", "Fábio Júnior"] 
+        },
+        demandas: ["Expansão de rede", "Ampliação de rede existente", "Alteração na capacidade da CTO", "Alteração na capacidade da CEP", "Manutenção corretiva", "Manutenção preventiva", "Atendimento emergencial", "Vistoria / levantamento", "Adequação de infraestrutura"],
+        servicos: {"Lançamento de cabo óptico":"metro","Retirada de cabo sem uso":"metro","Reposicionamento de cabo":"metro","Organização de reserva técnica":"unidade","Instalação de cordoalha":"metro","Organização de cabo em poste":"unidade/poste","Substituição de trecho de cabo":"metro","Instalação de CTO":"unidade","Instalação de CEO":"unidade","Instalação de CEP":"unidade","Modificação de CTO":"unidade","Modificação de CEO":"unidade","Modificação de CEP":"unidade","Pintura de CTO":"unidade","Pintura de CEO":"unidade","Pintura de CEP":"unidade","Substituição de caixa":"unidade","Reorganização de reserva da CTO":"unidade","Identificação de clientes nas portas da CTO":"caixa","Rebaixamento de caixa":"unidade","Identificação de fibra":"fibra","Organização de fibras":"unidade/caixa","Correção de fusão":"serviço","Teste com OTDR":"unidade","Verificação de potência óptica":"caixa","Certificação da rede":"unidade","Implantação de poste":"unidade","Retirada de poste":"unidade","Substituição de poste":"unidade","Reposicionamento de poste":"unidade","Instalação de ferragem":"unidade","Retirada de ferragem":"unidade","Reparo de cabo danificado":"metro","Reparo de caixa danificada":"unidade","Substituição de trecho de rede":"metro","Retirada de rede abandonada":"metro","Regularização de rede":"unidade","Levantamento de rota":"levantamento","Levantamento de posteamento":"poste","Levantamento para expansão":"levantamento"},
+        ocorrencias: ["Cabo baixo","Cabo rompido","Cabo danificado","Cabo diferente do projeto","Ferragem danificada","Falta de ferragem","Poste inadequado","Caixa danificada","CTO sem sinal","Fibra sem identificação","Fibra diferente do projeto","Fusão com problema","Caixa em posição inadequada","Rede existente diferente do projeto","Necessidade de serviço adicional","Acesso ao local impossibilitado","Falta de material","Outro imprevisto","Falta de fusão existente"],
+        registros: []
+    };
+
+    function showLoading(show) {
+        document.getElementById('loading').style.display = show ? 'block' : 'none';
+    }
+
+    async function carregarDadosNuvem() {
+        showLoading(true);
+        try {
+            const localData = localStorage.getItem('appData_infra');
+            if (localData) {
+                appData = JSON.parse(localData);
+            }
+
+            const res = await fetch(API_URL + '/latest?nocache=' + new Date().getTime(), {
+                headers: { "X-Master-Key": API_KEY }
+            });
+            
+            if (res.ok) {
+                const data = await res.json();
+                if (data && data.record && data.record.equipes) {
+                    appData = data.record;
+                    if (!appData.registros) appData.registros = [];
+                    localStorage.setItem('appData_infra', JSON.stringify(appData));
+                }
+            }
+        } catch (e) {
+            console.log("Usando backup local:", e);
+        } finally {
+            renderizarTudo();
+            showLoading(false);
+        }
+    }
+
+    async function salvarDadosNuvem() {
+        showLoading(true);
+        renderizarTudo();
+        
+        localStorage.setItem('appData_infra', JSON.stringify(appData));
+
+        try {
+            await fetch(API_URL, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    "X-Master-Key": API_KEY
+                },
+                body: JSON.stringify(appData)
+            });
+        } catch (e) {
+            console.warn("Nuvem inacessível. Gravado no armazenamento local.");
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    function renderizarTudo() {
+        renderizarEquipes();
+        renderizarDemandas();
+        atualizarSelectsServicos();
+        atualizarSelectsOcorrencias();
+    }
+
+    function renderizarEquipes() {
+        const selectForm = document.getElementById('selectEquipe');
+        const selectEdit = document.getElementById('editEquipeSelect');
+        
+        const valorAtualForm = selectForm.value;
+        const valorAtualEdit = selectEdit.value;
+
+        selectForm.innerHTML = '<option value="">Selecione</option>';
+        selectEdit.innerHTML = '';
+
+        if (appData.equipes) {
+            Object.keys(appData.equipes).forEach(eq => {
+                selectForm.appendChild(new Option(eq, eq));
+                selectEdit.appendChild(new Option(eq, eq));
+            });
+        }
+
+        if (valorAtualForm) selectForm.value = valorAtualForm;
+        if (valorAtualEdit) selectEdit.value = valorAtualEdit;
+
+        atualizarMembros();
+        carregarMembrosEditor();
+    }
+
+    function renderizarDemandas() {
+        const selectDemanda = document.getElementById('selectDemanda');
+        selectDemanda.innerHTML = '<option value="">Selecione</option>';
+        if (appData.demandas) {
+            appData.demandas.forEach(d => selectDemanda.appendChild(new Option(d, d)));
+        }
+    }
+
+    function atualizarMembros() {
+        const equipe = document.getElementById('selectEquipe').value;
+        const selectResp = document.getElementById('selectResponsavel');
+
+        const respSelecionadoAntes = selectResp.value;
+        selectResp.innerHTML = '';
+
+        if (!equipe) {
+            selectResp.disabled = true;
+            selectResp.appendChild(new Option("Selecione primeiro a equipe", ""));
+            return;
+        }
+
+        const membros = (appData.equipes && appData.equipes[equipe]) ? appData.equipes[equipe] : [];
+
+        selectResp.disabled = false;
+        selectResp.appendChild(new Option("Selecione o responsável", ""));
+
+        if (membros.length > 0) {
+            membros.forEach(m => selectResp.appendChild(new Option(m, m)));
+            if (respSelecionadoAntes) selectResp.value = respSelecionadoAntes;
+        } else {
+            selectResp.appendChild(new Option("(Nenhum membro cadastrado nesta equipe)", ""));
+        }
+    }
+
+    function carregarMembrosEditor() {
+        const equipe = document.getElementById('editEquipeSelect').value;
+        const container = document.getElementById('listaMembrosEditor');
+        container.innerHTML = '';
+
+        if (equipe && appData.equipes && appData.equipes[equipe]) {
+            if (appData.equipes[equipe].length === 0) {
+                container.innerHTML = '<div style="font-size:12px; color:#6b7280;">Nenhum membro cadastrado nesta equipe.</div>';
+                return;
+            }
+            appData.equipes[equipe].forEach((membro, index) => {
+                let item = document.createElement('div');
+                item.className = 'membro-item';
+                item.innerHTML = `<span>${membro}</span><button type="button" onclick="removerMembro('${equipe}', ${index})">Excluir</button>`;
+                container.appendChild(item);
+            });
+        }
+    }
+
+    function removerMembro(equipe, index) { 
+        appData.equipes[equipe].splice(index, 1); 
+        salvarDadosNuvem(); 
+    }
+
+    function cadastrarMembro() {
+        const eqTarget = document.getElementById('editEquipeSelect').value;
+        const nomeInput = document.getElementById('novoMembroNome');
+        const nome = nomeInput.value.trim();
+
+        if (nome !== "" && eqTarget) {
+            if (!appData.equipes[eqTarget]) appData.equipes[eqTarget] = [];
+            
+            appData.equipes[eqTarget].push(nome);
+            nomeInput.value = "";
+            
+            carregarMembrosEditor();
+            atualizarMembros();
+            salvarDadosNuvem();
+        } else {
+            alert("Selecione uma equipe e digite um nome válido.");
+        }
+    }
+
+    function renomearEquipe() {
+        const eqAntiga = document.getElementById('editEquipeSelect').value;
+        const novoNome = document.getElementById('novoNomeEquipeInput').value.trim();
+        if (!eqAntiga || !novoNome) return;
+        appData.equipes[novoNome] = appData.equipes[eqAntiga];
+        delete appData.equipes[eqAntiga];
+        document.getElementById('novoNomeEquipeInput').value = '';
+        salvarDadosNuvem();
+    }
+
+    function criarEquipe() {
+        const novoNome = document.getElementById('criarEquipeInput').value.trim();
+        if (!novoNome || appData.equipes[novoNome]) return;
+        appData.equipes[novoNome] = [];
+        document.getElementById('criarEquipeInput').value = '';
+        salvarDadosNuvem();
+    }
+
+    function excluirEquipe() {
+        const equipe = document.getElementById('editEquipeSelect').value;
+        if (equipe && confirm(`Tem certeza que deseja excluir a equipe ${equipe}?`)) {
+            delete appData.equipes[equipe];
+            salvarDadosNuvem();
+        }
+    }
+
+    function adicionarDemanda() {
+        const input = document.getElementById('novaDemandaInput');
+        const val = input.value.trim();
+        if (val && !appData.demandas.includes(val)) {
+            appData.demandas.push(val);
+            input.value = '';
+            salvarDadosNuvem();
+        }
+    }
+
+    function adicionarServico() {
+        const inputServ = document.getElementById('novoServicoInput');
+        const inputUn = document.getElementById('novaUnidadeInput');
+        const serv = inputServ.value.trim();
+        const un = inputUn.value.trim() || 'unidade';
+        
+        if (serv) {
+            appData.servicos[serv] = un;
+            inputServ.value = '';
+            inputUn.value = '';
+            salvarDadosNuvem();
+        }
+    }
+
+    function adicionarOcorrencia() {
+        const input = document.getElementById('novaOcorrenciaInput');
+        const val = input.value.trim();
+        if (val && !appData.ocorrencias.includes(val)) {
+            appData.ocorrencias.push(val);
+            input.value = '';
+            salvarDadosNuvem();
+        }
+    }
+
+    function atualizarSelectsServicos() {
+        const selects = document.querySelectorAll('#services select');
+        selects.forEach(select => {
+            const valorSelecionado = select.value;
+            select.innerHTML = '<option value="">Selecione o serviço</option>' +
+                Object.keys(appData.servicos || {}).map(x => '<option value="' + x + '">' + x + '</option>').join('');
+            select.value = valorSelecionado;
+        });
+    }
+
+    function atualizarSelectsOcorrencias() {
+        const selects = document.querySelectorAll('#occurrences select');
+        selects.forEach(select => {
+            const valorSelecionado = select.value;
+            select.innerHTML = '<option value="">Selecione a ocorrência</option>' +
+                (appData.ocorrencias || []).map(x => '<option value="' + x + '">' + x + '</option>').join('');
+            select.value = valorSelecionado;
+        });
+    }
+
+    function add() {
+        let d = document.createElement('div');
+        d.className = 'card';
+        d.innerHTML = '<div class="grid"><select onchange="u(this)"><option value="">Selecione o serviço</option>' +
+            Object.keys(appData.servicos || {}).map(x => '<option value="' + x + '">' + x + '</option>').join('') +
+            '</select><input type="number" min="0" step=".01" placeholder="Qtd."></div>' +
+            '<div class="unit">Unidade: <span>—</span></div>' +
+            '<button class="btn rm" type="button" onclick="this.parentElement.remove()">Remover</button>';
+        document.getElementById('services').appendChild(d);
+    }
+
+    function addOcorrencia() {
+        let d = document.createElement('div');
+        d.className = 'card';
+        d.innerHTML = '<select><option value="">Selecione a ocorrência</option>' +
+            (appData.ocorrencias || []).map(x => '<option value="' + x + '">' + x + '</option>').join('') +
+            '</select>' +
+            '<textarea placeholder="Descrição breve do imprevisto..." style="margin-top: 8px; min-height: 60px;"></textarea>' +
+            '<button class="btn rm" type="button" onclick="this.parentElement.remove()">Remover</button>';
+        document.getElementById('occurrences').appendChild(d);
+    }
+
+    function u(s) { 
+        s.parentElement.parentElement.querySelector('span').textContent = appData.servicos[s.value] || '—'; 
+    }
+
+    function tog(id, n) { 
+        document.getElementById(id).classList.toggle('hidden', document.querySelector('input[name=' + n + ']:checked').value !== 's'); 
+    }
+
+    function toggleModoEdicao() {
+        modoEdicao = !modoEdicao;
+        document.body.classList.toggle('edit-mode', modoEdicao);
+    }
+
+    async function enviar() {
+        const equipe = document.getElementById('selectEquipe').value;
+        const responsavel = document.getElementById('selectResponsavel').value;
+        const data = document.getElementById('dataAtual').value;
+        const local = document.getElementById('localRef').value.trim();
+        const demanda = document.getElementById('selectDemanda').value;
+
+        if (!equipe || !responsavel || !data || !local || !demanda) {
+            return alert('Preencha os campos obrigatórios da seção 1 e 2.');
+        }
+
+        const cards = document.querySelectorAll('#services .card');
+        if (cards.length === 0) return alert('Adicione pelo menos um serviço.');
+
+        const servicosExecutados = [];
+        let servicoInvalido = false;
+
+        cards.forEach(card => {
+            const servico = card.querySelector('select').value;
+            const qtd = card.querySelector('input[type="number"]').value;
+            if (!servico || !qtd || parseFloat(qtd) <= 0) {
+                servicoInvalido = true;
+            }
+            servicosExecutados.push(`${servico} (${qtd} ${appData.servicos[servico] || ''})`);
+        });
+
+        if (servicoInvalido) return alert('Preencha a quantidade de todos os serviços adicionados.');
+
+        const ocorrenciasExecutadas = [];
+        const houveImprevisto = document.querySelector('input[name="i"]:checked').value === 's';
+        
+        if (houveImprevisto) {
+            const cardsOcc = document.querySelectorAll('#occurrences .card');
+            if (cardsOcc.length === 0) {
+                return alert('Você marcou que houve imprevisto. Adicione pelo menos uma ocorrência ou altere para "Não".');
+            }
+
+            let ocorrenciaInvalida = false;
+            cardsOcc.forEach(card => {
+                const tipo = card.querySelector('select').value;
+                const descricao = card.querySelector('textarea').value.trim();
+                if (!tipo) {
+                    ocorrenciaInvalida = true;
+                }
+                ocorrenciasExecutadas.push(`${tipo}${descricao ? ': ' + descricao : ''}`);
+            });
+
+            if (ocorrenciaInvalida) return alert('Selecione o tipo para todas as ocorrências adicionadas.');
+        }
+
+        const houveTransporte = document.querySelector('input[name="tr"]:checked').value === 's';
+
+        const payloadEnvio = {
+            equipe: equipe,
+            responsavel: responsavel,
+            data: data,
+            local: local,
+            demanda: demanda,
+            servicos: servicosExecutados.join(" | "),
+            ocorrencias: houveImprevisto ? ocorrenciasExecutadas.join(" | ") : "Nenhuma",
+            transporte: houveTransporte ? `${document.getElementById('selectTipoTransporte').value} (${document.getElementById('qtdViagens').value} viagem/ns)` : "Não",
+            observacoes: document.getElementById('obsGerais').value
+        };
+
+        showLoading(true);
+
+        try {
+            await fetch(GOOGLE_SCRIPT_URL, {
+                method: "POST",
+                mode: "no-cors",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payloadEnvio)
+            });
+
+            // Mantém salvando no backup local e JSONBin
+            const novoRegistro = {
+                id: Date.now(),
+                equipe,
+                responsavel,
+                data,
+                local,
+                demanda,
+                servicos: servicosExecutados,
+                imprevisto: { houve: houveImprevisto, ocorrencias: ocorrenciasExecutadas },
+                transporte: {
+                    houve: houveTransporte,
+                    tipo: document.getElementById('selectTipoTransporte').value,
+                    viagens: document.getElementById('qtdViagens').value
+                },
+                observacoes: document.getElementById('obsGerais').value
+            };
+
+            if (!appData.registros) appData.registros = [];
+            appData.registros.push(novoRegistro);
+            await salvarDadosNuvem();
+
+            document.getElementById('form').style.display = 'none';
+            document.getElementById('ok').style.display = 'block';
+        } catch (err) {
+            alert('Erro ao enviar para o Google Sheets. Verifique sua conexão.');
+            console.error(err);
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    function verificarPermissaoAdmin() {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('admin') === '1234') {
+            document.getElementById('adminBar').classList.remove('hidden');
+        }
+    }
+
+    try { document.getElementById('dataAtual').value = new Date().toISOString().split('T')[0]; } catch(e){}
+    verificarPermissaoAdmin();
+    carregarDadosNuvem();
+    add();
+</script>
+</body>
+</html>
